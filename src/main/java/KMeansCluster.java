@@ -12,14 +12,11 @@ import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Mapper;
-import org.apache.hadoop.mapreduce.Reducer;
 
-
-public class KMeans {
-	public static class KMeansMapper extends Mapper<LongWritable,Text,IntWritable,Cluster>{
+public class KMeansCluster {
+	public static class KMeansClusterMapper extends Mapper<LongWritable, Text, Text, IntWritable>{
 		private ArrayList<Cluster> kClusters = new ArrayList<Cluster>();
 
 		@Override
@@ -56,17 +53,13 @@ public class KMeans {
 				if(id == -1)
 					throw new InterruptedException("id == -1");
 				else{
-					Cluster cluster = new Cluster(id, instance);
-					cluster.setNumOfPoints(1);
-					System.out.println("cluster that i emit is:" + cluster.toString());
-					context.write(new IntWritable(id), cluster);
+					context.write(value, new IntWritable(id));
 				}
 			} catch (Exception e) {
-				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}
 		}
-
+		
 		public int getNearest(Instance instance) throws Exception{
 			int id = -1;
 			double distance = Double.MAX_VALUE;
@@ -81,48 +74,6 @@ public class KMeans {
 				}
 			}
 			return id;
-		}
-		
-		public Cluster getClusterByID(int id){
-			for(Cluster cluster : kClusters){
-				if(cluster.getClusterID() == id)
-					return cluster;
-			}
-			return null;
-		}
-	}
-	
-	public static class KMeansCombiner extends Reducer<IntWritable,Cluster,IntWritable,Cluster>{
-		public void reduce(IntWritable key, Iterable<Cluster> value, Context context)throws 
-		IOException, InterruptedException{
-			Instance instance = new Instance();
-			int numOfPoints = 0;
-			for(Cluster cluster : value){
-				numOfPoints += cluster.getNumOfPoints();
-				System.out.println("cluster is:" + cluster.toString());
-				instance = instance.add(cluster.getCenter().multiply(cluster.getNumOfPoints()));
-			}
-			Cluster cluster = new Cluster(key.get(),instance.divide(numOfPoints));
-			cluster.setNumOfPoints(numOfPoints);
-			System.out.println("combiner emit cluster:" + cluster.toString());
-			context.write(key, cluster);
-		}
-	}
-	
-	
-	
-	public static class KMeansReducer extends Reducer<IntWritable,Cluster,NullWritable,Cluster>{
-		public void reduce(IntWritable key, Iterable<Cluster> value, Context context)throws 
-		IOException, InterruptedException{
-			Instance instance = new Instance();
-			int numOfPoints = 0;
-			for(Cluster cluster : value){
-				numOfPoints += cluster.getNumOfPoints();
-				instance = instance.add(cluster.getCenter().multiply(cluster.getNumOfPoints()));
-			}
-			Cluster cluster = new Cluster(key.get(),instance.divide(numOfPoints));
-			cluster.setNumOfPoints(numOfPoints);
-			context.write(NullWritable.get(), cluster);
 		}
 	}
 }
